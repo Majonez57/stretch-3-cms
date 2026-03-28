@@ -106,7 +106,7 @@ The project is organised into modular components:
 │
 ├── ui                              # Streamlit UI
 │   ├── components.py               # Reusable UI elements
-│   └── streamlit_app.py            #
+│   └── streamlit_app.py            # Streamlit UI, managing live interaction and experiment modes
 │
 ├── experiments                     # Experiment execution logic
 │   ├── runner.py
