@@ -13,15 +13,6 @@ This project was developed as part of a final year Computer Science dissertation
 ![Multimodal HRI Command Hub UI](/assets/live-interaction-screenshot.png)
 *Figure: Live interaction interface showing multimodal command input and system output.*
 
-## Features
-
-- Real-time voice command parsing
-- Gesture recognition using webcam input
-- Multimodal fusion with temporal alignment and resolution based on confidence
-- Interactive UI built with Streamlit
-- Structured experiment mode with logging
-- Analysis pipeline with metrics and visualisations
-
 ## System Overview
 
 The system consists of:
@@ -60,6 +51,25 @@ This launches the interface with:
 - Live interaction mode
 - Experiment mode for data collection
 
+## Running Tests
+
+Run the test suite using pytest:
+
+```bash
+pytest
+```
+
+Optional:
+
+```bash
+# Run with verbose output
+pytest -v
+
+# Run a specific test file
+pytest tests/test_fusion.py
+```
+
+
 ## Running the Analysis
 
 The analysis pipeline can be executed via command line:
@@ -80,7 +90,6 @@ python -m analysis.run_analysis --save-plots
 python -m analysis.run_analysis --output-dir my/plots/
 ```
 
-
 ## Project Structure
 
 The project is organised into modular components:
@@ -90,7 +99,7 @@ The project is organised into modular components:
 ├── config.py                       # Global config constants
 ├── models.py                       # Data models
 │ 
-├── voice                           # Voice processsing module
+├── voice                           # Voice processing module
 │   ├── parser.py                   # NL to structured command
 │   ├── speech.py                   # Speech-to-text (Whisper)
 │   └── validation.py               # Command validation
@@ -137,26 +146,6 @@ The project is organised into modular components:
 │
 └── logs                            # Logs (generated at runtime)
 ```
-
-
-## Running Tests
-
-Run the test suite using pytest:
-
-```bash
-pytest
-```
-
-Optional:
-
-```bash
-# Run with verbose output
-pytest -v
-
-# Run a specific test file
-pytest tests/test_fusion.py
-```
-
 
 ## Technologies
 
