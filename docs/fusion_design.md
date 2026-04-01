@@ -244,6 +244,7 @@ hand positioned right
 - Therefore, gesture overrides voice for the `location` field
 
 - Confidence gap is small:
+
 $$
 |\text{voice}_{conf} - \text{gesture}_{conf}| < 0.15
 $$
