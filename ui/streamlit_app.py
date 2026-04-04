@@ -37,6 +37,7 @@ from ui.components import (
     render_session_summary,
     render_trial_prompt,
 )
+from ros2.dispatch import dispatch_if_enabled
 from voice.parser import parse_text_to_intent
 from voice.validation import validate_command
 
@@ -382,6 +383,7 @@ def _init_state() -> None:
         # Live mode
         "live_mode": None,
         "live_cmd": None,
+        "live_cmd_dispatched": False,
         "live_gesture_step": 0,
         "live_gesture_action": None,
         "live_multimodal_step": 0,
@@ -464,6 +466,9 @@ def _run_live_page() -> None:
     with col_right:
         st.markdown("---")
         if st.session_state.live_cmd is not None:
+            if not st.session_state.live_cmd_dispatched:
+                dispatch_if_enabled(st.session_state.live_cmd)
+                st.session_state.live_cmd_dispatched = True
             render_command_panel(st.session_state.live_cmd)
         else:
             st.markdown("**Recognised Command**")
@@ -482,6 +487,7 @@ def _reset_live_state() -> None:
     """
 
     st.session_state.live_cmd = None
+    st.session_state.live_cmd_dispatched = False
     st.session_state.live_gesture_step = 0
     st.session_state.live_gesture_action = None
     st.session_state.live_multimodal_step = 0

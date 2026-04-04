@@ -29,6 +29,10 @@ Gesture system:
 
 Logging:
 - LOG_DIR: Directory where session logs are stored.
+
+ROS 2 bridge:
+    - ROS_DISPATCH_ENABLED: Whether to enable dispatching commands to the ROS 2 bridge
+    - ROS_BRIDGE_URL: Base URL of the ROS 2 bridge (e.g., "http://stretch.local:5050")
 """
 
 FUSION_WINDOW_SECONDS: float = 3.0
@@ -54,3 +58,6 @@ GESTURE_OVERLAY_ENABLED: bool = True
 GESTURE_STABILITY_SECS: float = 1.0
 
 LOG_DIR: str = "logs"
+
+ROS_DISPATCH_ENABLED: bool = False
+ROS_BRIDGE_URL: str = "http://stretch.local:5050"  # TODO: update with actual robot hostname or IP address
