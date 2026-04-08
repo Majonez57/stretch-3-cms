@@ -4,7 +4,7 @@ Experiment session controller for trial-based evaluation.
 Manages trial progression, result recording, and summary generation for a single particpant session.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from experiments.trials import get_ordered_trials
@@ -140,7 +140,7 @@ class ExperimentRunner:
             voice_timestamp=voice_timestamp,
             gesture_timestamp=gesture_timestamp,
             fusion_within_window=fusion_within_window,
-            timestamp=datetime.now().isoformat(),
+            timestamp=datetime.now(timezone.utc).isoformat(),
             confidence=confidence,
         )
         self._results.append(result)
