@@ -49,6 +49,10 @@ OBJECT_SYNONYMS: dict[str, ObjectName] = {
     "bottle": ObjectName.bottle,
     "flask": ObjectName.bottle,
     "container": ObjectName.bottle,
+    "strawberry": ObjectName.strawberry,
+    "strawberries": ObjectName.strawberry,
+    "orange": ObjectName.orange,
+    "fruit": ObjectName.fruit,
 }
 
 LOCATION_SYNONYMS: dict[str, Location] = {

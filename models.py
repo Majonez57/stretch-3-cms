@@ -38,12 +38,18 @@ class ObjectName(str, Enum):
         red_cube: A red cube object.
         blue_cube: A blue cube object.
         bottle: A bottle object.
+        strawberry: A strawberry object.
+        orange: An orange object.
+        fruit: An unspecified fruit object.
         none: No object specified or not applicable.
     """
 
     red_cube = "red_cube"
     blue_cube = "blue_cube"
     bottle = "bottle"
+    strawberry = "strawberry"
+    orange = "orange"
+    fruit = "fruit"
     none = "none"
 
 
