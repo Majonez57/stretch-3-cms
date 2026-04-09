@@ -27,6 +27,7 @@ For detailed design see:
 - [Fusion Design](./docs/fusion_design.md)
 - [Experiment Design](./docs/experiment_design.md)
 - [Analysis](./docs/analysis.md)
+- [ROS 2 Integration](./docs/ros2_integration.md)
 
 ## Installation
 
@@ -129,7 +130,8 @@ The project is organised into modular components:
 │   ├── loader.py
 │   ├── metrics.py
 │   ├── plots.py
-│   └── run_analysis.py
+│   ├── run_analysis.py
+│   └── stats.py
 │
 ├── tests                           # Unit tests
 │   ├── test_analysis_loader.py
@@ -140,6 +142,7 @@ The project is organised into modular components:
 │   ├── analysis.md
 │   ├── experiment_design.md
 │   ├── fusion_design.md
+│   ├── ros2_integration.md
 │   └── system_architecture.md
 │ 
 ├── assets                          # Images
