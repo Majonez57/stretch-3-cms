@@ -34,7 +34,13 @@ The system follows a sequential processing pipeline:
    - Final structured command (action, object, location)
    - Confidence score and metadata
 
-5. **Evaluation Layer (Trial Mode Only)**
+5. **Robot Dispatch (Live Mode Only)**
+   - Fused command dispatched over WiFi to the Stretch 3 robot
+   - Bridge publishes command as a ROS 2 message
+   - Executor maps command to a hardcoded motion primitive
+   - *(See [`ros2_integration.md`](ros2_integration.md) for full details)*
+
+6. **Evaluation Layer (Trial Mode Only)**
    - Compares predicted vs expected command
    - Logs results for analysis
 
@@ -173,7 +179,8 @@ The data flow diagram illustrates how information moves through the system, from
 
 The system is designed to support future extensions, including:
 
-- Integration with physical robotic platforms such as Stretch 3
+- Integration with additional physical robotic platforms beyond Stretch 3
+- Dynamic motion planning on the Stretch 3 beyond hardcoded pose primitives
 - Additional gesture vocabularies
 - More complex multi-step commands
 - Adaptive or learning-based fusion strategies
