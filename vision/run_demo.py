@@ -118,7 +118,7 @@ def main() -> None:
             cv2.putText(combined, "Robot image", (left.shape[1] + 14, 24),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (220, 220, 220), 1)
 
-            cv2.imshow("Vision demo — press Q to quit", combined)
+            cv2.imshow("Vision demo - press Q to quit", combined)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
     finally:
