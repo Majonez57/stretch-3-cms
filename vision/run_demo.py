@@ -37,10 +37,9 @@ def _resize_to_height(img: np.ndarray, height: int) -> np.ndarray:
 
 def _draw_cursor(img: np.ndarray, x: int, y: int, is_pointing: bool) -> np.ndarray:
     out = img.copy()
-    colour = (0, 120, 255) if is_pointing else (180, 180, 180)
-    cv2.circle(out, (x, y), 12, colour, -1)
-    cv2.circle(out, (x, y), 14, (255, 255, 255), 2)
-    cv2.drawMarker(out, (x, y), (255, 255, 255), cv2.MARKER_CROSS, 20, 1)
+    cv2.circle(out, (x, y), 30, (0, 0, 0), -1)
+    cv2.circle(out, (x, y), 26, (0, 0, 220), -1)
+    cv2.drawMarker(out, (x, y), (255, 255, 255), cv2.MARKER_CROSS, 40, 2)
     return out
 
 
@@ -48,8 +47,8 @@ def _draw_confirm_bar(img: np.ndarray, held: int, total: int) -> np.ndarray:
     out = img.copy()
     h, w = out.shape[:2]
     bar_w = int((held / total) * (w - 20))
-    cv2.rectangle(out, (10, h - 20), (w - 10, h - 8), (60, 60, 60), -1)
-    cv2.rectangle(out, (10, h - 20), (10 + bar_w, h - 8), (0, 200, 80), -1)
+    cv2.rectangle(out, (10, h - 50), (w - 10, h - 8), (60, 60, 60), -1)
+    cv2.rectangle(out, (10, h - 50), (10 + bar_w, h - 8), (220, 100, 0), -1)
     return out
 
 
