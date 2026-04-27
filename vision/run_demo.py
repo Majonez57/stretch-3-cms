@@ -26,7 +26,7 @@ from vision.command_sender import send_command
 PLACEHOLDER_PATH = "assets/table_placeholder.jpg"
 WEBCAM_INDEX = 0
 DISPLAY_HEIGHT = 480
-CONFIRM_FRAMES = 15
+CONFIRM_FRAMES = 60
 
 
 def _resize_to_height(img: np.ndarray, height: int) -> np.ndarray:
@@ -68,6 +68,7 @@ def main() -> None:
     pointer = FingerPointer()
     held_frames = 0
     last_target = None
+    needs_reset = False
 
     print("Vision demo running. Point at the robot image to place the cursor.")
     print("Hold a pointing pose to confirm. Press Q to quit.")
@@ -90,21 +91,26 @@ def main() -> None:
                 px, py = map_to_image_coords(result.x_norm, result.y_norm, rw, rh)
                 last_target = (px, py)
 
-                if result.is_pointing:
-                    held_frames += 1
-                else:
+                if not result.is_pointing:
                     held_frames = 0
+                    needs_reset = False
+                elif needs_reset:
+                    held_frames = 0
+                else:
+                    held_frames += 1
 
                 robot_display = _draw_cursor(robot_display, px, py, result.is_pointing)
 
-                if result.is_pointing:
+                if result.is_pointing and not needs_reset:
                     robot_display = _draw_confirm_bar(robot_display, held_frames, CONFIRM_FRAMES)
 
-                if held_frames == CONFIRM_FRAMES:
+                if held_frames >= CONFIRM_FRAMES:
                     send_command(last_target)
                     held_frames = 0
+                    needs_reset = True
             else:
                 held_frames = 0
+                needs_reset = False
 
             left = _resize_to_height(annotated_webcam, DISPLAY_HEIGHT)
             right = _resize_to_height(robot_display, DISPLAY_HEIGHT)
