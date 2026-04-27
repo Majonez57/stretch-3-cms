@@ -77,9 +77,6 @@ def draw_mask_overlay(frame: np.ndarray, mask: np.ndarray, color=(0, 255, 0), al
     
     overlay = frame.copy()
     overlay[mask] = color
-
-    cv2.imshow('mask', overlay)
-    cv2.waitKey(500)
     cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame)
     return frame
 
@@ -161,7 +158,7 @@ def main():
         if needs_update:
             processor.add_inputs_to_inference_session(
             inference_session=inference_session,
-            frame_idx=frame_idx,
+            frame_idx=0,
             obj_ids=1,
             input_points= [[points]], 
             input_labels= [[labels]], 
