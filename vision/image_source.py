@@ -77,6 +77,7 @@ class ZMQImageSource(ImageSource):
         self._latest_frame: Optional[np.ndarray] = None
         self._latest_depth: Optional[np.ndarray] = None
         self._camera_info: Optional[dict] = None
+        self._aruco_markers: dict = {}
 
     def get_frame(self) -> Optional[np.ndarray]:
         """Return latest color frame. Non-blocking — returns cached frame if no new data."""
@@ -85,6 +86,7 @@ class ZMQImageSource(ImageSource):
             self._latest_frame = data.get("color_image")
             self._latest_depth = data.get("depth_image")
             self._camera_info = data.get("color_camera_info")
+            self._aruco_markers = data.get("aruco_markers", {})
         except self._zmq.Again:
             pass
         return self._latest_frame.copy() if self._latest_frame is not None else None
@@ -96,6 +98,10 @@ class ZMQImageSource(ImageSource):
     def get_camera_info(self) -> Optional[dict]:
         """Return camera intrinsics dict from the last received frame."""
         return self._camera_info
+
+    def get_aruco_markers(self) -> dict[int, tuple[int, int]]:
+        """Return {marker_id: (cx, cy)} for ArUco markers visible in the last frame."""
+        return self._aruco_markers
 
     def close(self) -> None:
         self._socket.close()

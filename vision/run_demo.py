@@ -43,6 +43,16 @@ def _draw_cursor(img: np.ndarray, x: int, y: int, is_pointing: bool) -> np.ndarr
     return out
 
 
+def _draw_aruco_overlay(img: np.ndarray, markers: dict[int, tuple[int, int]]) -> np.ndarray:
+    out = img.copy()
+    for marker_id, (cx, cy) in markers.items():
+        cv2.circle(out, (cx, cy), 14, (0, 255, 0), 2)
+        cv2.drawMarker(out, (cx, cy), (0, 255, 0), cv2.MARKER_CROSS, 20, 1)
+        cv2.putText(out, str(marker_id), (cx + 16, cy + 6),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+    return out
+
+
 def _draw_confirm_bar(img: np.ndarray, held: int, total: int) -> np.ndarray:
     out = img.copy()
     h, w = out.shape[:2]
@@ -86,6 +96,10 @@ def main() -> None:
 
             rh, rw = robot_frame.shape[:2]
             robot_display = robot_frame.copy()
+
+            aruco_markers = image_source.get_aruco_markers() if hasattr(image_source, "get_aruco_markers") else {}
+            if aruco_markers:
+                robot_display = _draw_aruco_overlay(robot_display, aruco_markers)
 
             if result:
                 px, py = map_to_image_coords(result.x_norm, result.y_norm, rw, rh)

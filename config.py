@@ -61,3 +61,7 @@ LOG_DIR: str = "logs"
 
 ROS_DISPATCH_ENABLED: bool = True
 ROS_BRIDGE_URL: str = "http://192.168.239.2:5050"
+
+# D405 camera ZMQ stream (robot publishes, dev machine subscribes)
+CAMERA_ZMQ_HOST: str = "192.168.239.2"
+CAMERA_ZMQ_PORT: int = 4405
