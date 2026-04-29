@@ -193,7 +193,6 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--exposure", default="low",
-        choices=EXPOSURE_KEYWORDS + ["<integer>"],
         help="Exposure setting: low, medium, auto, or an integer value.",
     )
     parser.add_argument(
