@@ -19,11 +19,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import cv2
 import numpy as np
 
-from vision.image_source import PlaceholderImageSource
+from vision.image_source import ZMQImageSource
 from vision.finger_pointer import FingerPointer, map_to_image_coords
 from vision.command_sender import send_command
 
-PLACEHOLDER_PATH = "assets/table_placeholder.jpg"
 WEBCAM_INDEX = 0
 DISPLAY_HEIGHT = 480
 CONFIRM_FRAMES = 60
@@ -36,11 +35,10 @@ def _resize_to_height(img: np.ndarray, height: int) -> np.ndarray:
 
 
 def _draw_cursor(img: np.ndarray, x: int, y: int, is_pointing: bool) -> np.ndarray:
-    out = img.copy()
-    cv2.circle(out, (x, y), 30, (0, 0, 0), -1)
-    cv2.circle(out, (x, y), 26, (0, 0, 220), -1)
-    cv2.drawMarker(out, (x, y), (255, 255, 255), cv2.MARKER_CROSS, 40, 2)
-    return out
+    overlay = img.copy()
+    cv2.circle(overlay, (x, y), 14, (0, 255, 0), 2)
+    cv2.drawMarker(overlay, (x, y), (0, 255, 0), cv2.MARKER_CROSS, 20, 1)
+    return cv2.addWeighted(overlay, 0.6, img, 0.4, 0)
 
 
 def _draw_aruco_overlay(img: np.ndarray, markers: dict[int, tuple[int, int]]) -> np.ndarray:
@@ -63,12 +61,7 @@ def _draw_confirm_bar(img: np.ndarray, held: int, total: int) -> np.ndarray:
 
 
 def main() -> None:
-    try:
-        image_source = PlaceholderImageSource(PLACEHOLDER_PATH)
-    except FileNotFoundError:
-        print(f"Placeholder image not found at '{PLACEHOLDER_PATH}'.")
-        print("Add a photo of your table to assets/table_placeholder.jpg and rerun.")
-        sys.exit(1)
+    image_source = ZMQImageSource(host="192.168.239.2", port=4405)
 
     cap = cv2.VideoCapture(WEBCAM_INDEX)
     if not cap.isOpened():
@@ -119,6 +112,10 @@ def main() -> None:
                     robot_display = _draw_confirm_bar(robot_display, held_frames, CONFIRM_FRAMES)
 
                 if held_frames >= CONFIRM_FRAMES:
+                    # TODO: wire in SAM
+                    # segmenter.set_image(robot_frame)
+                    # mask = segmenter.segment_at_point(px, py)
+                    # send_command(last_target, mask=mask)
                     send_command(last_target)
                     held_frames = 0
                     needs_reset = True
