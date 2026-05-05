@@ -38,6 +38,18 @@ WEBCAM_INDEX = 0
 DISPLAY_HEIGHT = 480
 CONFIRM_FRAMES = 60
 STABILITY_RADIUS = 25
+WINDOW_NAME = "Vision demo - press Q to quit"
+
+# Shared state for mouse click handler
+_click_state: dict = {"pending": None, "left_w": 0, "robot_scale": 1.0}
+
+
+def _on_mouse(event: int, x: int, y: int, flags: int, param: object) -> None:
+    if event == cv2.EVENT_LBUTTONDOWN:
+        robot_x_in_panel = x - (_click_state["left_w"] + 4)  # 4px divider
+        if robot_x_in_panel >= 0:
+            scale = _click_state["robot_scale"]
+            _click_state["pending"] = (int(robot_x_in_panel / scale), int(y / scale))
 
 
 def _resize_to_height(img: np.ndarray, height: int) -> np.ndarray:
@@ -106,8 +118,12 @@ def main() -> None:
     needs_reset = False
     anchor_pos = None
 
+    cv2.namedWindow(WINDOW_NAME)
+    cv2.setMouseCallback(WINDOW_NAME, _on_mouse)
+
     print("Vision pipeline running.")
     print("Point at the robot image and hold to select an object.")
+    print("Or left-click on the robot image to select instantly.")
     print("send_dict streamed to robot on port 4010 every frame.")
     print("Press Q to quit.")
 
@@ -129,7 +145,7 @@ def main() -> None:
                 cv2.putText(placeholder, "Waiting for robot...", (20, DISPLAY_HEIGHT // 2),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (180, 180, 180), 1)
                 divider = np.full((DISPLAY_HEIGHT, 4, 3), 80, dtype=np.uint8)
-                cv2.imshow("Vision demo - press Q to quit",
+                cv2.imshow(WINDOW_NAME,
                            np.concatenate([left, divider, placeholder], axis=1))
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
@@ -199,6 +215,12 @@ def main() -> None:
                 needs_reset = False
                 anchor_pos = None
 
+            # --- Mouse click (instant select, bypasses finger hold) ---
+            if _click_state["pending"] is not None:
+                sam_tracker.click(*_click_state["pending"])
+                _click_state["pending"] = None
+                command_fired = True
+
             # --- SAM tracking ---
             sam_result = sam_tracker.process(
                 robot_frame,
@@ -219,6 +241,8 @@ def main() -> None:
             # --- Display ---
             left = _resize_to_height(annotated_webcam, DISPLAY_HEIGHT)
             right = _resize_to_height(robot_display, DISPLAY_HEIGHT)
+            _click_state["left_w"] = left.shape[1]
+            _click_state["robot_scale"] = DISPLAY_HEIGHT / rh
             divider = np.full((DISPLAY_HEIGHT, 4, 3), 80, dtype=np.uint8)
             combined = np.concatenate([left, divider, right], axis=1)
 
@@ -231,7 +255,7 @@ def main() -> None:
             cv2.putText(combined, servo_status, (left.shape[1] + 14, combined.shape[0] - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.45, (180, 180, 180), 1)
 
-            cv2.imshow("Vision demo - press Q to quit", combined)
+            cv2.imshow(WINDOW_NAME, combined)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
 
