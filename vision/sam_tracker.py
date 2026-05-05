@@ -84,7 +84,7 @@ class SamTracker:
             self._frames_since_resegment = 0
             box = self._mask_to_box(self._current_mask)
             if box is not None:
-                refreshed = self._segment_from_box(color_frame, box, neg_points)
+                refreshed = self._segment_from_box(color_frame, box)
                 if refreshed is not None:
                     self._current_mask = refreshed
 
@@ -158,14 +158,11 @@ class SamTracker:
 
     def _segment_from_box(
         self, frame: np.ndarray, box: tuple[int, int, int, int],
-        neg_points: Optional[list] = None,
     ) -> Optional[np.ndarray]:
         x1, y1, x2, y2 = box
-        kwargs: dict = {"source": frame, "bboxes": [[x1, y1, x2, y2]], "verbose": False}
-        if neg_points:
-            kwargs["points"] = [[int(nx), int(ny)] for nx, ny in neg_points]
-            kwargs["labels"] = [0] * len(neg_points)
-        results = self._model.predict(**kwargs)
+        results = self._model.predict(
+            source=frame, bboxes=[[x1, y1, x2, y2]], verbose=False
+        )
         if not results or results[0].masks is None:
             return None
         mask = results[0].masks.data[0].cpu().numpy()
