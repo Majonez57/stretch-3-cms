@@ -39,6 +39,7 @@ DISPLAY_HEIGHT = 480
 CONFIRM_FRAMES = 60
 STABILITY_RADIUS = 25
 WINDOW_NAME = "Vision demo - press Q to quit"
+USE_FINGER_POINTER = False  # set True to re-enable MediaPipe webcam pointing
 
 # Shared state for mouse click handler
 _click_state: dict = {"pending": None, "left_w": 0, "robot_scale": 1.0}
@@ -103,12 +104,12 @@ def _draw_sam_overlay(img: np.ndarray, mask: np.ndarray) -> np.ndarray:
 def main() -> None:
     image_source = ZMQImageSource(host="192.168.239.2", port=4405)
 
-    cap = cv2.VideoCapture(WEBCAM_INDEX)
-    if not cap.isOpened():
+    cap = cv2.VideoCapture(WEBCAM_INDEX) if USE_FINGER_POINTER else None
+    if USE_FINGER_POINTER and not cap.isOpened():
         print(f"Could not open webcam at index {WEBCAM_INDEX}.")
         sys.exit(1)
 
-    pointer = FingerPointer()
+    pointer = FingerPointer() if USE_FINGER_POINTER else None
     sam_tracker = SamTracker()
     fingertip_detector = FingertipDetector()
     servo_publisher = ServoPublisher(port=4010)
@@ -122,31 +123,37 @@ def main() -> None:
     cv2.setMouseCallback(WINDOW_NAME, _on_mouse)
 
     print("Vision pipeline running.")
-    print("Point at the robot image and hold to select an object.")
-    print("Or left-click on the robot image to select instantly.")
+    if USE_FINGER_POINTER:
+        print("Point at the robot image and hold to select an object.")
+    print("Left-click on the robot image to select an object.")
     print("send_dict streamed to robot on port 4010 every frame.")
     print("Press Q to quit.")
 
     try:
         while True:
-            ok, webcam_frame = cap.read()
-            if not ok:
-                break
+            if USE_FINGER_POINTER:
+                ok, webcam_frame = cap.read()
+                if not ok:
+                    break
+                webcam_frame = cv2.flip(webcam_frame, 1)
+                result, annotated_webcam = pointer.process(webcam_frame)
+            else:
+                result = None
+                annotated_webcam = None
 
-            webcam_frame = cv2.flip(webcam_frame, 1)
             robot_frame = image_source.get_frame()
-
-            result, annotated_webcam = pointer.process(webcam_frame)
 
             if robot_frame is None:
                 servo_publisher.publish({}, None)
-                left = _resize_to_height(annotated_webcam, DISPLAY_HEIGHT)
                 placeholder = np.zeros((DISPLAY_HEIGHT, DISPLAY_HEIGHT, 3), dtype=np.uint8)
                 cv2.putText(placeholder, "Waiting for robot...", (20, DISPLAY_HEIGHT // 2),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (180, 180, 180), 1)
-                divider = np.full((DISPLAY_HEIGHT, 4, 3), 80, dtype=np.uint8)
-                cv2.imshow(WINDOW_NAME,
-                           np.concatenate([left, divider, placeholder], axis=1))
+                if annotated_webcam is not None:
+                    left = _resize_to_height(annotated_webcam, DISPLAY_HEIGHT)
+                    divider = np.full((DISPLAY_HEIGHT, 4, 3), 80, dtype=np.uint8)
+                    cv2.imshow(WINDOW_NAME, np.concatenate([left, divider, placeholder], axis=1))
+                else:
+                    cv2.imshow(WINDOW_NAME, placeholder)
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
                 continue
@@ -241,29 +248,37 @@ def main() -> None:
                 send_command(last_target, sam_result=sam_result)
 
             # --- Display ---
-            left = _resize_to_height(annotated_webcam, DISPLAY_HEIGHT)
             right = _resize_to_height(robot_display, DISPLAY_HEIGHT)
-            _click_state["left_w"] = left.shape[1]
             _click_state["robot_scale"] = DISPLAY_HEIGHT / rh
-            divider = np.full((DISPLAY_HEIGHT, 4, 3), 80, dtype=np.uint8)
-            combined = np.concatenate([left, divider, right], axis=1)
 
-            cv2.putText(combined, "Webcam", (10, 24),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (220, 220, 220), 1)
-            cv2.putText(combined, "Robot image", (left.shape[1] + 14, 24),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (220, 220, 220), 1)
-
-            servo_status = f"fingers={'L+R' if len(fingertips)==2 else list(fingertips.keys()) or 'none'}  sam={'tracking' if sam_result else 'idle'}"
-            cv2.putText(combined, servo_status, (left.shape[1] + 14, combined.shape[0] - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.45, (180, 180, 180), 1)
+            if USE_FINGER_POINTER and annotated_webcam is not None:
+                left = _resize_to_height(annotated_webcam, DISPLAY_HEIGHT)
+                _click_state["left_w"] = left.shape[1]
+                divider = np.full((DISPLAY_HEIGHT, 4, 3), 80, dtype=np.uint8)
+                combined = np.concatenate([left, divider, right], axis=1)
+                cv2.putText(combined, "Webcam", (10, 24),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (220, 220, 220), 1)
+                cv2.putText(combined, "Robot image", (left.shape[1] + 14, 24),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (220, 220, 220), 1)
+                servo_status = f"fingers={'L+R' if len(fingertips)==2 else list(fingertips.keys()) or 'none'}  sam={'tracking' if sam_result else 'idle'}"
+                cv2.putText(combined, servo_status, (left.shape[1] + 14, combined.shape[0] - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.45, (180, 180, 180), 1)
+            else:
+                _click_state["left_w"] = 0
+                combined = right
+                servo_status = f"fingers={'L+R' if len(fingertips)==2 else list(fingertips.keys()) or 'none'}  sam={'tracking' if sam_result else 'idle'}"
+                cv2.putText(combined, servo_status, (10, combined.shape[0] - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.45, (180, 180, 180), 1)
 
             cv2.imshow(WINDOW_NAME, combined)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
 
     finally:
-        cap.release()
-        pointer.close()
+        if cap is not None:
+            cap.release()
+        if pointer is not None:
+            pointer.close()
         image_source.close()
         servo_publisher.close()
         cv2.destroyAllWindows()
