@@ -63,11 +63,12 @@ class SamTracker:
         depth_frame: Optional[np.ndarray] = None,
         camera_info: Optional[dict] = None,
         depth_scale: float = 0.001,
+        neg_points: Optional[list] = None,
     ) -> Optional[dict]:
         from norfair import Detection
 
         if self._clicked_point is not None:
-            self._current_mask = self._segment_from_point(color_frame, self._clicked_point)
+            self._current_mask = self._segment_from_point(color_frame, self._clicked_point, neg_points)
             self._clicked_point = None
 
         if self._current_mask is None:
@@ -83,7 +84,7 @@ class SamTracker:
             self._frames_since_resegment = 0
             for obj in tracked_objects:
                 cx, cy = obj.estimate[0].astype(int)
-                refreshed = self._segment_from_point(color_frame, (cx, cy))
+                refreshed = self._segment_from_point(color_frame, (cx, cy), neg_points)
                 if refreshed is not None:
                     self._current_mask = refreshed
 
@@ -133,11 +134,18 @@ class SamTracker:
     # ------------------------------------------------------------------
 
     def _segment_from_point(
-        self, frame: np.ndarray, point: tuple[int, int]
+        self, frame: np.ndarray, point: tuple[int, int],
+        neg_points: Optional[list] = None,
     ) -> Optional[np.ndarray]:
         x, y = point
+        all_points = [[x, y]]
+        all_labels = [1]
+        if neg_points:
+            for nx, ny in neg_points:
+                all_points.append([int(nx), int(ny)])
+                all_labels.append(0)
         results = self._model.predict(
-            source=frame, points=[[x, y]], labels=[1], verbose=False
+            source=frame, points=[all_points], labels=[all_labels], verbose=False
         )
         if not results or results[0].masks is None:
             return None
