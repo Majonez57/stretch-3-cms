@@ -38,18 +38,24 @@ class SamTracker:
         print("[SAM] Loading MobileSAM model…")
         self._model = SAM("mobile_sam.pt")
         self._Tracker = Tracker
-        self._tracker = Tracker(distance_function="euclidean", distance_threshold=30)
+        self._tracker = Tracker(distance_function="euclidean", distance_threshold=80)
         self._clicked_point: Optional[tuple[int, int]] = None
         self._current_mask: Optional[np.ndarray] = None
+        self._last_depth_result: Optional[dict] = None
+        self._frames_since_resegment: int = 0
         print("[SAM] Ready.")
 
     def click(self, x: int, y: int) -> None:
         self._clicked_point = (x, y)
+        self._last_depth_result = None
+        self._frames_since_resegment = 0
 
     def reset(self) -> None:
         self._clicked_point = None
         self._current_mask = None
-        self._tracker = self._Tracker(distance_function="euclidean", distance_threshold=30)
+        self._last_depth_result = None
+        self._frames_since_resegment = 0
+        self._tracker = self._Tracker(distance_function="euclidean", distance_threshold=80)
 
     def process(
         self,
@@ -72,11 +78,14 @@ class SamTracker:
         detections = [Detection(points=centroid)] if centroid is not None else []
         tracked_objects = self._tracker.update(detections=detections)
 
-        for obj in tracked_objects:
-            cx, cy = obj.estimate[0].astype(int)
-            refreshed = self._segment_from_point(color_frame, (cx, cy))
-            if refreshed is not None:
-                self._current_mask = refreshed
+        self._frames_since_resegment += 1
+        if self._frames_since_resegment >= 5:
+            self._frames_since_resegment = 0
+            for obj in tracked_objects:
+                cx, cy = obj.estimate[0].astype(int)
+                refreshed = self._segment_from_point(color_frame, (cx, cy))
+                if refreshed is not None:
+                    self._current_mask = refreshed
 
         if self._current_mask is None:
             return None
@@ -95,6 +104,7 @@ class SamTracker:
             depth_crop = depth_frame[min_y:max_y, min_x:max_x]
             mask_crop = self._current_mask[min_y:max_y, min_x:max_x]
             valid_depths = depth_crop[mask_crop > 0]
+            valid_depths = valid_depths[valid_depths > 0]
 
             if valid_depths.size > 0:
                 estimated_z_m = float(np.percentile(valid_depths, 50)) * depth_scale
@@ -107,13 +117,16 @@ class SamTracker:
                 center_ray = center_xyz / np.linalg.norm(center_xyz)
                 grasp_center_xyz = center_xyz + (width_m / 2.0) * center_ray
 
-                result.update({
+                self._last_depth_result = {
                     "grasp_center_xyz": grasp_center_xyz,
                     "left_side_xyz": left_xyz,
                     "right_side_xyz": right_xyz,
                     "width_m": width_m,
                     "estimated_z_m": estimated_z_m,
-                })
+                }
+
+        if self._last_depth_result is not None:
+            result.update(self._last_depth_result)
 
         return result
 
