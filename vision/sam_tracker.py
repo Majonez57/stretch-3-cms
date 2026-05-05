@@ -82,9 +82,9 @@ class SamTracker:
         self._frames_since_resegment += 1
         if self._frames_since_resegment >= 5:
             self._frames_since_resegment = 0
-            for obj in tracked_objects:
-                cx, cy = obj.estimate[0].astype(int)
-                refreshed = self._segment_from_point(color_frame, (cx, cy), neg_points)
+            box = self._mask_to_box(self._current_mask)
+            if box is not None:
+                refreshed = self._segment_from_box(color_frame, box, neg_points)
                 if refreshed is not None:
                     self._current_mask = refreshed
 
@@ -147,6 +147,25 @@ class SamTracker:
         results = self._model.predict(
             source=frame, points=[all_points], labels=[all_labels], verbose=False
         )
+        if not results or results[0].masks is None:
+            return None
+        mask = results[0].masks.data[0].cpu().numpy()
+        return cv2.resize(
+            mask.astype(np.uint8),
+            (frame.shape[1], frame.shape[0]),
+            interpolation=cv2.INTER_NEAREST,
+        )
+
+    def _segment_from_box(
+        self, frame: np.ndarray, box: tuple[int, int, int, int],
+        neg_points: Optional[list] = None,
+    ) -> Optional[np.ndarray]:
+        x1, y1, x2, y2 = box
+        kwargs: dict = {"source": frame, "bboxes": [[x1, y1, x2, y2]], "verbose": False}
+        if neg_points:
+            kwargs["points"] = [[int(nx), int(ny)] for nx, ny in neg_points]
+            kwargs["labels"] = [0] * len(neg_points)
+        results = self._model.predict(**kwargs)
         if not results or results[0].masks is None:
             return None
         mask = results[0].masks.data[0].cpu().numpy()
