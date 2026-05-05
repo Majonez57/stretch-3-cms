@@ -30,7 +30,7 @@ import numpy as np
 from vision.image_source import ZMQImageSource
 from vision.finger_pointer import FingerPointer, map_to_image_coords
 from vision.command_sender import send_command
-from vision.object_tracker import ObjectTracker
+from vision.sam_tracker import SamTracker
 from vision.fingertip_detector import FingertipDetector
 from vision.servo_publisher import ServoPublisher
 
@@ -110,7 +110,7 @@ def main() -> None:
         sys.exit(1)
 
     pointer = FingerPointer() if USE_FINGER_POINTER else None
-    sam_tracker = ObjectTracker()
+    sam_tracker = SamTracker()
     fingertip_detector = FingertipDetector()
     servo_publisher = ServoPublisher(port=4010)
 
@@ -231,11 +231,13 @@ def main() -> None:
                 command_fired = True
 
             # --- SAM tracking ---
+            fingertip_neg_pts = list(aruco_markers.values()) if aruco_markers else None
             sam_result = sam_tracker.process(
                 robot_frame,
                 depth_frame,
                 active_camera_info,
                 depth_scale if depth_scale is not None else 0.001,
+                neg_points=fingertip_neg_pts,
             )
 
             if sam_result is not None:
