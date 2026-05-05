@@ -1,36 +1,38 @@
 """
-Command sender stub.
+Logs confirmed pick commands to stdout.
 
-send_command() is the integration point between the vision pipeline and the
-robot. For now it just prints what it would do. When SAM is added it will
-receive a mask; when the robot integration is wired up it will call the
-ROS 2 bridge or ZMQ visual servoing controller.
+The actual robot communication happens via ServoPublisher (ZMQ port 4010),
+which streams send_dict every frame to the robot's visual servoing process.
+This module just records that a selection was confirmed.
 """
 
 from __future__ import annotations
 
 from typing import Optional
 
-import numpy as np
-
 
 def send_command(
     target_point: tuple[int, int],
-    mask: Optional[np.ndarray] = None,
+    sam_result: Optional[dict] = None,
 ) -> None:
-    """
-    Send a pick/interact command targeting the pointed-at object.
-
-    Args:
-        target_point: (x, y) pixel coords on the robot image.
-        mask:         Boolean HxW mask from SAM (None until SAM is wired in).
-    """
     x, y = target_point
 
-    if mask is not None:
-        ys, xs = np.where(mask)
-        cx = int(xs.mean()) if len(xs) else x
-        cy = int(ys.mean()) if len(ys) else y
-        print(f"[CMD] target=({x}, {y})  mask_centroid=({cx}, {cy})  mask_px={mask.sum()}")
+    if sam_result is None:
+        print(f"[CMD] confirmed target=({x},{y})  — no SAM result yet, keep holding")
+        return
+
+    if "grasp_center_xyz" in sam_result:
+        gx, gy, gz = sam_result["grasp_center_xyz"] * 100.0
+        width_cm = sam_result["width_m"] * 100.0
+        print(
+            f"[CMD] confirmed target=({x},{y})  "
+            f"grasp=({gx:.1f},{gy:.1f},{gz:.1f})cm  "
+            f"width={width_cm:.1f}cm  → streaming to robot on port 4010"
+        )
     else:
-        print(f"[CMD] target=({x}, {y})  mask=None (SAM not yet wired)")
+        cx, cy = sam_result["center_pix"]
+        print(
+            f"[CMD] confirmed target=({x},{y})  "
+            f"mask_centre=({cx},{cy})  "
+            f"(no depth — robot will not servo until depth available)"
+        )

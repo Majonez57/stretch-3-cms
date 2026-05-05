@@ -340,7 +340,7 @@ def main(use_remote_computer):
 
             if perception.camera_info is None:
                 perception.set_camera_parameters(
-                    d405_output["camera_info"],
+                    d405_output["depth_camera_info"],
                     d405_output["depth_scale"]
                 )
 
