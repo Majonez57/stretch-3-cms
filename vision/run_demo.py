@@ -30,7 +30,7 @@ import numpy as np
 from vision.image_source import ZMQImageSource
 from vision.finger_pointer import FingerPointer, map_to_image_coords
 from vision.command_sender import send_command
-from vision.sam_tracker import SamTracker
+from vision.object_tracker import ObjectTracker
 from vision.fingertip_detector import FingertipDetector
 from vision.servo_publisher import ServoPublisher
 
@@ -110,7 +110,7 @@ def main() -> None:
         sys.exit(1)
 
     pointer = FingerPointer() if USE_FINGER_POINTER else None
-    sam_tracker = SamTracker()
+    sam_tracker = ObjectTracker()
     fingertip_detector = FingertipDetector()
     servo_publisher = ServoPublisher(port=4010)
 
