@@ -109,6 +109,8 @@ class SamTracker:
 
                 result.update({
                     "grasp_center_xyz": grasp_center_xyz,
+                    "left_side_xyz": left_xyz,
+                    "right_side_xyz": right_xyz,
                     "width_m": width_m,
                     "estimated_z_m": estimated_z_m,
                 })

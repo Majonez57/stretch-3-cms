@@ -1,15 +1,18 @@
 """
-Vision pipeline demo — finger pointing selects an object via MobileSAM.
+Vision pipeline — finger pointing selects an object via MobileSAM, then
+streams its 3-D position to the robot's visual servoing controller.
 
 Run from the project root:
     python -m vision.run_demo
-or:
-    python vision/run_demo.py
 
-Point at the robot camera image with your index finger. Hold the pointing
-pose steady for CONFIRM_FRAMES frames to confirm the selection. MobileSAM
-will segment the object under the cursor and start tracking it; the 3-D
-grasp target is printed and can be forwarded to the visual servoing controller.
+Point at the robot camera image with your index finger and hold the pointing
+pose steady for CONFIRM_FRAMES to confirm the target. MobileSAM segments the
+object and starts tracking it. The 3-D grasp position and fingertip data are
+published on ZMQ port 4010 every frame so the robot can servo to the object.
+
+Robot side — run on the Stretch:
+    python robot/send_camera_images.py          # D405 stream → port 4405
+    python visual_servoing_demo.py -y -r        # servo controller (yolo+remote)
 
 Press Q to quit.
 """
@@ -28,11 +31,13 @@ from vision.image_source import ZMQImageSource
 from vision.finger_pointer import FingerPointer, map_to_image_coords
 from vision.command_sender import send_command
 from vision.sam_tracker import SamTracker
+from vision.fingertip_detector import FingertipDetector
+from vision.servo_publisher import ServoPublisher
 
 WEBCAM_INDEX = 0
 DISPLAY_HEIGHT = 480
 CONFIRM_FRAMES = 60
-STABILITY_RADIUS = 25  # pixels — cursor must stay within this circle before counting starts
+STABILITY_RADIUS = 25
 
 
 def _resize_to_height(img: np.ndarray, height: int) -> np.ndarray:
@@ -93,14 +98,18 @@ def main() -> None:
 
     pointer = FingerPointer()
     sam_tracker = SamTracker()
+    fingertip_detector = FingertipDetector()
+    servo_publisher = ServoPublisher(port=4010)
 
     held_frames = 0
     last_target = None
     needs_reset = False
     anchor_pos = None
 
-    print("Vision demo running. Point at the robot image to place the cursor.")
-    print("Hold a pointing pose to confirm and segment the object. Press Q to quit.")
+    print("Vision pipeline running.")
+    print("Point at the robot image and hold to select an object.")
+    print("send_dict streamed to robot on port 4010 every frame.")
+    print("Press Q to quit.")
 
     try:
         while True:
@@ -114,16 +123,33 @@ def main() -> None:
             result, annotated_webcam = pointer.process(webcam_frame)
 
             if robot_frame is None:
+                servo_publisher.publish({}, None)
                 left = _resize_to_height(annotated_webcam, DISPLAY_HEIGHT)
                 placeholder = np.zeros((DISPLAY_HEIGHT, DISPLAY_HEIGHT, 3), dtype=np.uint8)
-                cv2.putText(placeholder, "Waiting for robot…", (20, DISPLAY_HEIGHT // 2),
+                cv2.putText(placeholder, "Waiting for robot...", (20, DISPLAY_HEIGHT // 2),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (180, 180, 180), 1)
                 divider = np.full((DISPLAY_HEIGHT, 4, 3), 80, dtype=np.uint8)
-                combined = np.concatenate([left, divider, placeholder], axis=1)
-                cv2.imshow("Vision demo - press Q to quit", combined)
+                cv2.imshow("Vision demo - press Q to quit",
+                           np.concatenate([left, divider, placeholder], axis=1))
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
                 continue
+
+            depth_frame = image_source.get_depth()
+            depth_camera_info = image_source.get_depth_camera_info()
+            camera_info = image_source.get_camera_info()
+            depth_scale = image_source.get_depth_scale()
+
+            # Use depth camera info for accuracy; fall back to colour
+            active_camera_info = depth_camera_info or camera_info
+
+            # --- Fingertip detection ---
+            fingertips: dict = {}
+            if active_camera_info is not None:
+                try:
+                    fingertips = fingertip_detector.detect(robot_frame, active_camera_info)
+                except Exception:
+                    pass
 
             rh, rw = robot_frame.shape[:2]
             robot_display = robot_frame.copy()
@@ -132,6 +158,7 @@ def main() -> None:
             if aruco_markers:
                 robot_display = _draw_aruco_overlay(robot_display, aruco_markers)
 
+            # --- Finger pointer → confirmation ---
             command_fired = False
 
             if result:
@@ -172,26 +199,26 @@ def main() -> None:
                 needs_reset = False
                 anchor_pos = None
 
-            # SAM tracking — runs every frame; handles any click set above
-            depth_frame = image_source.get_depth()
-            camera_info = image_source.get_camera_info()
-            depth_scale = image_source.get_depth_scale()
+            # --- SAM tracking ---
             sam_result = sam_tracker.process(
                 robot_frame,
                 depth_frame,
-                camera_info,
+                active_camera_info,
                 depth_scale if depth_scale is not None else 0.001,
             )
 
             if sam_result is not None:
                 robot_display = _draw_sam_overlay(robot_display, sam_result["mask"])
 
+            # --- Publish every frame to visual servoing ---
+            servo_publisher.publish(fingertips, sam_result)
+
             if command_fired:
                 send_command(last_target, sam_result=sam_result)
 
+            # --- Display ---
             left = _resize_to_height(annotated_webcam, DISPLAY_HEIGHT)
             right = _resize_to_height(robot_display, DISPLAY_HEIGHT)
-
             divider = np.full((DISPLAY_HEIGHT, 4, 3), 80, dtype=np.uint8)
             combined = np.concatenate([left, divider, right], axis=1)
 
@@ -200,13 +227,19 @@ def main() -> None:
             cv2.putText(combined, "Robot image", (left.shape[1] + 14, 24),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (220, 220, 220), 1)
 
+            servo_status = f"fingers={'L+R' if len(fingertips)==2 else list(fingertips.keys()) or 'none'}  sam={'tracking' if sam_result else 'idle'}"
+            cv2.putText(combined, servo_status, (left.shape[1] + 14, combined.shape[0] - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.45, (180, 180, 180), 1)
+
             cv2.imshow("Vision demo - press Q to quit", combined)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
+
     finally:
         cap.release()
         pointer.close()
         image_source.close()
+        servo_publisher.close()
         cv2.destroyAllWindows()
 
 

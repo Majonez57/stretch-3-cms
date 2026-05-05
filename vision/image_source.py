@@ -77,6 +77,7 @@ class ZMQImageSource(ImageSource):
         self._latest_frame: Optional[np.ndarray] = None
         self._latest_depth: Optional[np.ndarray] = None
         self._camera_info: Optional[dict] = None
+        self._depth_camera_info: Optional[dict] = None
         self._depth_scale: Optional[float] = None
         self._aruco_markers: dict = {}
 
@@ -87,6 +88,7 @@ class ZMQImageSource(ImageSource):
             self._latest_frame = data.get("color_image")
             self._latest_depth = data.get("depth_image")
             self._camera_info = data.get("color_camera_info")
+            self._depth_camera_info = data.get("depth_camera_info")
             self._depth_scale = data.get("depth_scale")
             self._aruco_markers = data.get("aruco_markers", {})
         except self._zmq.Again:
@@ -100,6 +102,10 @@ class ZMQImageSource(ImageSource):
     def get_camera_info(self) -> Optional[dict]:
         """Return camera intrinsics dict from the last received frame."""
         return self._camera_info
+
+    def get_depth_camera_info(self) -> Optional[dict]:
+        """Return depth camera intrinsics dict (more accurate than colour for 3-D)."""
+        return self._depth_camera_info
 
     def get_depth_scale(self) -> Optional[float]:
         """Return the depth scale (metres per raw depth unit) from the last frame."""
