@@ -217,7 +217,9 @@ def main() -> None:
 
             # --- Mouse click (instant select, bypasses finger hold) ---
             if _click_state["pending"] is not None:
-                sam_tracker.click(*_click_state["pending"])
+                click_pt = _click_state["pending"]
+                sam_tracker.click(*click_pt)
+                last_target = click_pt
                 _click_state["pending"] = None
                 command_fired = True
 

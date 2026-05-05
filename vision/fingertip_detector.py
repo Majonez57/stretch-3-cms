@@ -21,7 +21,7 @@ from yaml.loader import SafeLoader
 
 _REPO_ROOT = pathlib.Path(__file__).parent.parent
 _MBSAM_DIR = _REPO_ROOT / "mbsam"
-_SERVO_DIR = pathlib.Path(__file__).parent.parent.parent / "stretch_visual_servoing"
+_SERVO_DIR = pathlib.Path(__file__).parent.parent.parent / "stretch-3-cms"
 
 for _p in [str(_MBSAM_DIR), str(_SERVO_DIR)]:
     if _p not in sys.path:
