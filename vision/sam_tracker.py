@@ -50,9 +50,6 @@ class SamTracker:
         self._last_depth_result = None
         self._frames_since_resegment = 0
 
-    def is_tracking(self) -> bool:
-        return self._current_mask is not None
-
     def reset(self) -> None:
         self._clicked_point = None
         self._current_mask = None
