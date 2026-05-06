@@ -79,12 +79,28 @@ class SamTracker:
         detections = [Detection(points=centroid)] if centroid is not None else []
         tracked_objects = self._tracker.update(detections=detections)
 
+        # Norfair's Kalman-smoothed centroid — stable between SAM refreshes
+        if tracked_objects:
+            est = tracked_objects[0].estimate[0]
+            smooth_cx, smooth_cy = int(est[0]), int(est[1])
+        else:
+            smooth_cx, smooth_cy = None, None
+
         self._frames_since_resegment += 1
         if self._frames_since_resegment >= 5:
             self._frames_since_resegment = 0
-            box = self._mask_to_box(self._current_mask)
-            if box is not None:
-                refreshed = self._segment_from_box(color_frame, box)
+            raw_box = self._mask_to_box(self._current_mask)
+            if raw_box is not None:
+                if smooth_cx is not None:
+                    # Shift the refresh box to be centred on Norfair's estimate
+                    # so drift accumulated since the last refresh is corrected
+                    x1, y1, x2, y2 = raw_box
+                    hw, hh = (x2 - x1) // 2, (y2 - y1) // 2
+                    refresh_box = (smooth_cx - hw, smooth_cy - hh,
+                                   smooth_cx + hw, smooth_cy + hh)
+                else:
+                    refresh_box = raw_box
+                refreshed = self._segment_from_box(color_frame, refresh_box)
                 if refreshed is not None:
                     self._current_mask = refreshed
 
@@ -96,8 +112,10 @@ class SamTracker:
             return None
 
         min_x, min_y, max_x, max_y = box
-        cx_pix = int((min_x + max_x) / 2)
-        cy_pix = int((min_y + max_y) / 2)
+        # Use Norfair's smoothed centroid for center_pix so the reported position
+        # transitions smoothly rather than jumping on each SAM refresh
+        cx_pix = smooth_cx if smooth_cx is not None else int((min_x + max_x) / 2)
+        cy_pix = smooth_cy if smooth_cy is not None else int((min_y + max_y) / 2)
 
         result: dict = {"mask": self._current_mask, "center_pix": (cx_pix, cy_pix)}
 
