@@ -119,6 +119,7 @@ def main() -> None:
     needs_reset = False
     anchor_pos = None
     victory_active = False  # debounce: True while victory gesture is held
+    object_selected = False
 
     cv2.namedWindow(WINDOW_NAME)
     cv2.setMouseCallback(WINDOW_NAME, _on_mouse)
@@ -137,7 +138,11 @@ def main() -> None:
                 if not ok:
                     break
                 webcam_frame = cv2.flip(webcam_frame, 1)
-                result, annotated_webcam = pointer.process(webcam_frame)
+                if object_selected:
+                    result = None
+                    annotated_webcam = None
+                else:
+                    result, annotated_webcam = pointer.process(webcam_frame)
             else:
                 result = None
                 annotated_webcam = None
@@ -246,6 +251,9 @@ def main() -> None:
                 last_target = click_pt
                 _click_state["pending"] = None
                 command_fired = True
+
+            if command_fired:
+                object_selected = True
 
             # --- SAM tracking ---
             fingertip_neg_pts = list(aruco_markers.values()) if aruco_markers else None
