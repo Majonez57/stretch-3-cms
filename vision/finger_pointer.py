@@ -34,11 +34,9 @@ _RING_PIP = 14
 _PINKY_TIP = 20
 _PINKY_PIP = 18
 
-_PINCH_THRESHOLD = 0.07  # normalised distance between thumb and index tips
-
 # Drawing colours (BGR)
 _COLOUR_POINTING = (0, 120, 255)
-_COLOUR_PINCH = (0, 255, 255)
+_COLOUR_VICTORY = (0, 255, 100)
 _COLOUR_IDLE = (180, 180, 180)
 _COLOUR_TIP = (0, 0, 255)
 
@@ -60,7 +58,7 @@ class PointerResult:
     x_norm: float
     y_norm: float
     is_pointing: bool
-    is_pinching: bool = False
+    is_victory: bool = False
 
 
 class FingerPointer:
@@ -98,12 +96,12 @@ class FingerPointer:
         lm = result.hand_landmarks[0]
         tip = lm[_INDEX_TIP]
         is_pointing = _detect_pointing(lm)
-        is_pinching = _detect_pinch(lm)
+        is_victory = _detect_victory(lm)
 
-        _draw_hand(annotated, lm, is_pointing)
-        _draw_fingertip(annotated, tip.x, tip.y, is_pointing, is_pinching)
+        _draw_hand(annotated, lm, is_pointing, is_victory)
+        _draw_fingertip(annotated, tip.x, tip.y, is_pointing, is_victory)
 
-        return PointerResult(x_norm=tip.x, y_norm=tip.y, is_pointing=is_pointing, is_pinching=is_pinching), annotated
+        return PointerResult(x_norm=tip.x, y_norm=tip.y, is_pointing=is_pointing, is_victory=is_victory), annotated
 
     def close(self) -> None:
         self._landmarker.close()
@@ -135,16 +133,22 @@ def _detect_pointing(lm) -> bool:
     return index_extended and middle_curled and ring_curled and pinky_curled
 
 
-def _detect_pinch(lm) -> bool:
-    tx, ty = lm[_THUMB_TIP].x, lm[_THUMB_TIP].y
-    ix, iy = lm[_INDEX_TIP].x, lm[_INDEX_TIP].y
-    dist = ((tx - ix) ** 2 + (ty - iy) ** 2) ** 0.5
-    return dist < _PINCH_THRESHOLD
+def _detect_victory(lm) -> bool:
+    index_extended = lm[_INDEX_TIP].y < lm[_INDEX_PIP].y
+    middle_extended = lm[_MIDDLE_TIP].y < lm[_MIDDLE_PIP].y
+    ring_curled = lm[_RING_TIP].y > lm[_RING_PIP].y
+    pinky_curled = lm[_PINKY_TIP].y > lm[_PINKY_PIP].y
+    return index_extended and middle_extended and ring_curled and pinky_curled
 
 
-def _draw_hand(frame: np.ndarray, lm: list, is_pointing: bool) -> None:
+def _draw_hand(frame: np.ndarray, lm: list, is_pointing: bool, is_victory: bool = False) -> None:
     h, w = frame.shape[:2]
-    colour = _COLOUR_POINTING if is_pointing else _COLOUR_IDLE
+    if is_victory:
+        colour = _COLOUR_VICTORY
+    elif is_pointing:
+        colour = _COLOUR_POINTING
+    else:
+        colour = _COLOUR_IDLE
 
     for a, b in _HAND_CONNECTIONS:
         x1, y1 = int(lm[a].x * w), int(lm[a].y * h)
@@ -157,13 +161,13 @@ def _draw_hand(frame: np.ndarray, lm: list, is_pointing: bool) -> None:
 
 
 def _draw_fingertip(
-    frame: np.ndarray, x_norm: float, y_norm: float, is_pointing: bool, is_pinching: bool = False
+    frame: np.ndarray, x_norm: float, y_norm: float, is_pointing: bool, is_victory: bool = False
 ) -> None:
     h, w = frame.shape[:2]
     cx = int(x_norm * w)
     cy = int(y_norm * h)
-    if is_pinching:
-        colour = _COLOUR_PINCH
+    if is_victory:
+        colour = _COLOUR_VICTORY
     elif is_pointing:
         colour = _COLOUR_TIP
     else:
