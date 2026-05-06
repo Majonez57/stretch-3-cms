@@ -118,8 +118,7 @@ def main() -> None:
     last_target = None
     needs_reset = False
     anchor_pos = None
-    pinch_active = False  # debounce: True while pinch gesture is held
-    object_selected = False
+    victory_active = False  # debounce: True while victory gesture is held
 
     cv2.namedWindow(WINDOW_NAME)
     cv2.setMouseCallback(WINDOW_NAME, _on_mouse)
@@ -138,11 +137,7 @@ def main() -> None:
                 if not ok:
                     break
                 webcam_frame = cv2.flip(webcam_frame, 1)
-                if object_selected:
-                    result = None
-                    annotated_webcam = webcam_frame
-                else:
-                    result, annotated_webcam = pointer.process(webcam_frame)
+                result, annotated_webcam = pointer.process(webcam_frame)
             else:
                 result = None
                 annotated_webcam = None
@@ -194,17 +189,17 @@ def main() -> None:
                 px, py = map_to_image_coords(result.x_norm, result.y_norm, rw, rh)
                 last_target = (px, py)
 
-                # Pinch gesture: immediate selection on leading edge of pinch
-                if result.is_pinching:
-                    if not pinch_active:
+                # Victory gesture: immediate selection on leading edge of victory sign
+                if result.is_victory:
+                    if not victory_active:
                         sam_tracker.click(px, py)
                         command_fired = True
-                        pinch_active = True
+                        victory_active = True
                         needs_reset = False
                     held_frames = 0
                     anchor_pos = None
                 else:
-                    pinch_active = False
+                    victory_active = False
 
                     # Fallback: hold pointing pose for CONFIRM_FRAMES
                     if not result.is_pointing:
@@ -232,8 +227,8 @@ def main() -> None:
 
                 robot_display = _draw_cursor(robot_display, px, py, result.is_pointing)
 
-                if result.is_pinching:
-                    robot_display = _draw_cursor_label(robot_display, px, py, "pinch!")
+                if result.is_victory:
+                    robot_display = _draw_cursor_label(robot_display, px, py, "selected!")
                 elif result.is_pointing and not needs_reset:
                     label = "hold still" if held_frames == 0 else "selecting..."
                     robot_display = _draw_cursor_label(robot_display, px, py, label)
@@ -242,7 +237,7 @@ def main() -> None:
                 held_frames = 0
                 needs_reset = False
                 anchor_pos = None
-                pinch_active = False
+                victory_active = False
 
             # --- Mouse click (instant select, bypasses finger hold) ---
             if _click_state["pending"] is not None:
@@ -252,21 +247,15 @@ def main() -> None:
                 _click_state["pending"] = None
                 command_fired = True
 
-            if command_fired:
-                object_selected = True
-
-            # --- SAM tracking (only after an object has been selected) ---
+            # --- SAM tracking ---
             fingertip_neg_pts = list(aruco_markers.values()) if aruco_markers else None
-            if object_selected:
-                sam_result = sam_tracker.process(
-                    robot_frame,
-                    depth_frame,
-                    active_camera_info,
-                    depth_scale if depth_scale is not None else 0.001,
-                    neg_points=fingertip_neg_pts,
-                )
-            else:
-                sam_result = None
+            sam_result = sam_tracker.process(
+                robot_frame,
+                depth_frame,
+                active_camera_info,
+                depth_scale if depth_scale is not None else 0.001,
+                neg_points=fingertip_neg_pts,
+            )
 
             if sam_result is not None:
                 robot_display = _draw_sam_overlay(robot_display, sam_result["mask"])
