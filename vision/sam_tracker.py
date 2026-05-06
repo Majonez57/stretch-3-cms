@@ -38,7 +38,7 @@ class SamTracker:
         print("[SAM] Loading MobileSAM model…")
         self._model = SAM("mobile_sam.pt")
         self._Tracker = Tracker
-        self._tracker = Tracker(distance_function="euclidean", distance_threshold=80)
+        self._tracker = Tracker(distance_function="iou", distance_threshold=0.7)
         self._clicked_point: Optional[tuple[int, int]] = None
         self._current_mask: Optional[np.ndarray] = None
         self._last_depth_result: Optional[dict] = None
@@ -55,7 +55,7 @@ class SamTracker:
         self._current_mask = None
         self._last_depth_result = None
         self._frames_since_resegment = 0
-        self._tracker = self._Tracker(distance_function="euclidean", distance_threshold=80)
+        self._tracker = self._Tracker(distance_function="iou", distance_threshold=0.7)
 
     def process(
         self,
@@ -75,31 +75,30 @@ class SamTracker:
             self._tracker.update(detections=[])
             return None
 
-        centroid = self._mask_centroid(self._current_mask)
-        detections = [Detection(points=centroid)] if centroid is not None else []
+        raw_box = self._mask_to_box(self._current_mask)
+        if raw_box is not None:
+            x1, y1, x2, y2 = raw_box
+            detections = [Detection(points=np.array([[x1, y1], [x2, y2]]))]
+        else:
+            detections = []
         tracked_objects = self._tracker.update(detections=detections)
 
-        # Norfair's Kalman-smoothed centroid — stable between SAM refreshes
+        # Norfair's Kalman-smoothed bbox — tracks both position and scale
         if tracked_objects:
-            est = tracked_objects[0].estimate[0]
-            smooth_cx, smooth_cy = int(est[0]), int(est[1])
+            est = tracked_objects[0].estimate  # shape (2, 2): [[x1,y1],[x2,y2]]
+            sx1, sy1 = int(est[0][0]), int(est[0][1])
+            sx2, sy2 = int(est[1][0]), int(est[1][1])
+            smooth_box = (sx1, sy1, sx2, sy2)
+            smooth_cx = (sx1 + sx2) // 2
+            smooth_cy = (sy1 + sy2) // 2
         else:
-            smooth_cx, smooth_cy = None, None
+            smooth_box, smooth_cx, smooth_cy = None, None, None
 
         self._frames_since_resegment += 1
         if self._frames_since_resegment >= 5:
             self._frames_since_resegment = 0
-            raw_box = self._mask_to_box(self._current_mask)
-            if raw_box is not None:
-                if smooth_cx is not None:
-                    # Shift the refresh box to be centred on Norfair's estimate
-                    # so drift accumulated since the last refresh is corrected
-                    x1, y1, x2, y2 = raw_box
-                    hw, hh = (x2 - x1) // 2, (y2 - y1) // 2
-                    refresh_box = (smooth_cx - hw, smooth_cy - hh,
-                                   smooth_cx + hw, smooth_cy + hh)
-                else:
-                    refresh_box = raw_box
+            refresh_box = smooth_box if smooth_box is not None else raw_box
+            if refresh_box is not None:
                 refreshed = self._segment_from_box(color_frame, refresh_box)
                 if refreshed is not None:
                     self._current_mask = refreshed
