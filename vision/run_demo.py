@@ -39,7 +39,7 @@ DISPLAY_HEIGHT = 480
 CONFIRM_FRAMES = 60
 STABILITY_RADIUS = 25
 WINDOW_NAME = "Vision demo - press Q to quit"
-USE_FINGER_POINTER = False  # set True to re-enable MediaPipe webcam pointing
+USE_FINGER_POINTER = True
 
 # Shared state for mouse click handler
 _click_state: dict = {"pending": None, "left_w": 0, "robot_scale": 1.0}
@@ -118,6 +118,7 @@ def main() -> None:
     last_target = None
     needs_reset = False
     anchor_pos = None
+    pinch_active = False  # debounce: True while pinch gesture is held
 
     cv2.namedWindow(WINDOW_NAME)
     cv2.setMouseCallback(WINDOW_NAME, _on_mouse)
@@ -188,32 +189,47 @@ def main() -> None:
                 px, py = map_to_image_coords(result.x_norm, result.y_norm, rw, rh)
                 last_target = (px, py)
 
-                if not result.is_pointing:
-                    held_frames = 0
-                    needs_reset = False
-                    anchor_pos = None
-                elif needs_reset:
+                # Pinch gesture: immediate selection on leading edge of pinch
+                if result.is_pinching:
+                    if not pinch_active:
+                        sam_tracker.click(px, py)
+                        command_fired = True
+                        pinch_active = True
+                        needs_reset = False
                     held_frames = 0
                     anchor_pos = None
                 else:
-                    if anchor_pos is None:
-                        anchor_pos = (px, py)
-                    dx, dy = px - anchor_pos[0], py - anchor_pos[1]
-                    if dx * dx + dy * dy > STABILITY_RADIUS ** 2:
-                        held_frames = 0
-                        anchor_pos = (px, py)
-                    else:
-                        held_frames += 1
+                    pinch_active = False
 
-                if held_frames >= CONFIRM_FRAMES:
-                    sam_tracker.click(px, py)
-                    command_fired = True
-                    held_frames = 0
-                    needs_reset = True
+                    # Fallback: hold pointing pose for CONFIRM_FRAMES
+                    if not result.is_pointing:
+                        held_frames = 0
+                        needs_reset = False
+                        anchor_pos = None
+                    elif needs_reset:
+                        held_frames = 0
+                        anchor_pos = None
+                    else:
+                        if anchor_pos is None:
+                            anchor_pos = (px, py)
+                        dx, dy = px - anchor_pos[0], py - anchor_pos[1]
+                        if dx * dx + dy * dy > STABILITY_RADIUS ** 2:
+                            held_frames = 0
+                            anchor_pos = (px, py)
+                        else:
+                            held_frames += 1
+
+                    if held_frames >= CONFIRM_FRAMES:
+                        sam_tracker.click(px, py)
+                        command_fired = True
+                        held_frames = 0
+                        needs_reset = True
 
                 robot_display = _draw_cursor(robot_display, px, py, result.is_pointing)
 
-                if result.is_pointing and not needs_reset:
+                if result.is_pinching:
+                    robot_display = _draw_cursor_label(robot_display, px, py, "pinch!")
+                elif result.is_pointing and not needs_reset:
                     label = "hold still" if held_frames == 0 else "selecting..."
                     robot_display = _draw_cursor_label(robot_display, px, py, label)
                     robot_display = _draw_confirm_bar(robot_display, held_frames, CONFIRM_FRAMES)
@@ -221,6 +237,7 @@ def main() -> None:
                 held_frames = 0
                 needs_reset = False
                 anchor_pos = None
+                pinch_active = False
 
             # --- Mouse click (instant select, bypasses finger hold) ---
             if _click_state["pending"] is not None:

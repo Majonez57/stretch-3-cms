@@ -24,6 +24,7 @@ except ImportError:
     _MP_AVAILABLE = False
 
 # MediaPipe landmark indices used for pointing detection
+_THUMB_TIP = 4
 _INDEX_TIP = 8
 _INDEX_PIP = 6
 _MIDDLE_TIP = 12
@@ -33,8 +34,11 @@ _RING_PIP = 14
 _PINKY_TIP = 20
 _PINKY_PIP = 18
 
+_PINCH_THRESHOLD = 0.07  # normalised distance between thumb and index tips
+
 # Drawing colours (BGR)
 _COLOUR_POINTING = (0, 120, 255)
+_COLOUR_PINCH = (0, 255, 255)
 _COLOUR_IDLE = (180, 180, 180)
 _COLOUR_TIP = (0, 0, 255)
 
@@ -56,6 +60,7 @@ class PointerResult:
     x_norm: float
     y_norm: float
     is_pointing: bool
+    is_pinching: bool = False
 
 
 class FingerPointer:
@@ -93,11 +98,12 @@ class FingerPointer:
         lm = result.hand_landmarks[0]
         tip = lm[_INDEX_TIP]
         is_pointing = _detect_pointing(lm)
+        is_pinching = _detect_pinch(lm)
 
         _draw_hand(annotated, lm, is_pointing)
-        _draw_fingertip(annotated, tip.x, tip.y, is_pointing)
+        _draw_fingertip(annotated, tip.x, tip.y, is_pointing, is_pinching)
 
-        return PointerResult(x_norm=tip.x, y_norm=tip.y, is_pointing=is_pointing), annotated
+        return PointerResult(x_norm=tip.x, y_norm=tip.y, is_pointing=is_pointing, is_pinching=is_pinching), annotated
 
     def close(self) -> None:
         self._landmarker.close()
@@ -129,6 +135,13 @@ def _detect_pointing(lm) -> bool:
     return index_extended and middle_curled and ring_curled and pinky_curled
 
 
+def _detect_pinch(lm) -> bool:
+    tx, ty = lm[_THUMB_TIP].x, lm[_THUMB_TIP].y
+    ix, iy = lm[_INDEX_TIP].x, lm[_INDEX_TIP].y
+    dist = ((tx - ix) ** 2 + (ty - iy) ** 2) ** 0.5
+    return dist < _PINCH_THRESHOLD
+
+
 def _draw_hand(frame: np.ndarray, lm: list, is_pointing: bool) -> None:
     h, w = frame.shape[:2]
     colour = _COLOUR_POINTING if is_pointing else _COLOUR_IDLE
@@ -144,11 +157,16 @@ def _draw_hand(frame: np.ndarray, lm: list, is_pointing: bool) -> None:
 
 
 def _draw_fingertip(
-    frame: np.ndarray, x_norm: float, y_norm: float, is_pointing: bool
+    frame: np.ndarray, x_norm: float, y_norm: float, is_pointing: bool, is_pinching: bool = False
 ) -> None:
     h, w = frame.shape[:2]
     cx = int(x_norm * w)
     cy = int(y_norm * h)
-    colour = _COLOUR_TIP if is_pointing else _COLOUR_IDLE
+    if is_pinching:
+        colour = _COLOUR_PINCH
+    elif is_pointing:
+        colour = _COLOUR_TIP
+    else:
+        colour = _COLOUR_IDLE
     cv2.circle(frame, (cx, cy), 10, colour, -1)
     cv2.circle(frame, (cx, cy), 12, (255, 255, 255), 2)
