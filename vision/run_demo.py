@@ -119,6 +119,8 @@ def main() -> None:
     needs_reset = False
     anchor_pos = None
     pinch_active = False  # debounce: True while pinch gesture is held
+    object_selected = False
+    frozen_webcam_frame: np.ndarray | None = None
 
     cv2.namedWindow(WINDOW_NAME)
     cv2.setMouseCallback(WINDOW_NAME, _on_mouse)
@@ -132,12 +134,16 @@ def main() -> None:
 
     try:
         while True:
-            if USE_FINGER_POINTER:
+            if USE_FINGER_POINTER and not object_selected:
                 ok, webcam_frame = cap.read()
                 if not ok:
                     break
                 webcam_frame = cv2.flip(webcam_frame, 1)
                 result, annotated_webcam = pointer.process(webcam_frame)
+                frozen_webcam_frame = annotated_webcam
+            elif USE_FINGER_POINTER and object_selected:
+                result = None
+                annotated_webcam = frozen_webcam_frame
             else:
                 result = None
                 annotated_webcam = None
@@ -247,6 +253,9 @@ def main() -> None:
                 _click_state["pending"] = None
                 command_fired = True
 
+            if command_fired:
+                object_selected = True
+
             # --- SAM tracking ---
             fingertip_neg_pts = list(aruco_markers.values()) if aruco_markers else None
             sam_result = sam_tracker.process(
@@ -256,6 +265,9 @@ def main() -> None:
                 depth_scale if depth_scale is not None else 0.001,
                 neg_points=fingertip_neg_pts,
             )
+
+            if sam_result is None and object_selected:
+                object_selected = False
 
             if sam_result is not None:
                 robot_display = _draw_sam_overlay(robot_display, sam_result["mask"])
