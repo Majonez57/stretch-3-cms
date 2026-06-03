@@ -1,95 +1,50 @@
-# Multimodal HRI Command Hub
+# Stretch-3 CMS Demo: r-WALTER integration
 
-A multimodal human–robot interaction system that combines voice and gesture input to enable intuitive command execution for assistive robotic tasks.
+Repo containing the code and instructions to run the Stretch-3 (Mr. Fantastic) pick-and-place demo. 
+This demo can also be ran using the r-WALTER biocabinet.
 
-The system supports three interaction modes:
-- Voice input (natural language)
-- Gesture input (hand gestures)
-- Multimodal input (fused voice and gesture)
+The demo aims to allow a user to select any given object in the robot view (either using a click, or hand-tracking), and the robot will use [visual servoing](https://github.com/hello-robot/stretch_visual_servoing/tree/main) to grasp the object and pick it up.
 
-This project was developed as part of a final year Computer Science dissertation focusing on usability, performance, and multimodal fusion.
-
-
-![Multimodal HRI Command Hub UI](/assets/live-interaction-screenshot.png)
-*Figure: Live interaction interface showing multimodal command input and system output.*
-
-## System Overview
-
-The system consists of:
-- Voice module: speech-to-text and command parsing
-- Gesture module: hand tracking and gesture recognition
-- Fusion module: combines inputs using temporal and confidence-based logic
-- UI: Streamlit-based interface for interaction and experiments
-- Analysis pipeline: evaluates performance using logged data
-
-For detailed design see:
-- [System Architecture](./docs/system_architecture.md)
-- [Fusion Design](./docs/fusion_design.md)
-- [Experiment Design](./docs/experiment_design.md)
-- [Analysis](./docs/analysis.md)
-- [ROS 2 Integration](./docs/ros2_integration.md)
+The demo uses:
+    - MobileSAM to segement arbitrary objects
+    - Norfair to track objects in the robot camera view
+    - Visual servoing to approach wanted object, and grasp it
 
 ## Installation
 
-Clone the repository:
+!TODO
 
+## Running the Demo
+
+**Physical checks and requirements**
+
+!TODO
+
+**Running the demo:**
+- To begin publishing images, on the robot terminal A:
 ```bash
-git clone https://github.com/rubenodamo/multimodal-hri.git
-cd multimodal-hri
+cd stretch-3-cms/robot/
+python3 send_camera_images.py
+``` 
+- To engage the visual servoing, in robot terminal B:
+> [!WARNING]
+> When you run this command, the robot will move into the initial position for grasping. Always check your surroundings
+```bash
+cd Documents/stretch_visual_servoing/
+python3 visual_servoing_demo.py -y -r
+```
+> [!IMPORTANT]
+> In the case of a failure, or emergency where the demo needs to be immediatly stopped, kill this terminal!
 
-# Install dependencies
-pip install -r requirements.txt
+- To run the demo, on the Jetson (or another GPU device):
+```bash
+cd Documents/stretch_visual_servoing/
+python3 -m vision.run_demo
 ```
 
-## Running the Application
-Start the Streamlit app:
+You should see a GUI with two images. To use gesture selection, face the webcam, and point with your finger. You will see a cursor appear on the robot view. Once you are happy with the selected object, lift your middle finger to select.
 
-```bash
-streamlit run app.py
-```
-
-This launches the interface with:
-- Live interaction mode
-- Experiment mode for data collection
-
-## Running Tests
-
-Run the test suite using pytest:
-
-```bash
-pytest
-```
-
-Optional:
-
-```bash
-# Run with verbose output
-pytest -v
-
-# Run a specific test file
-pytest tests/test_fusion.py
-```
-
-
-## Running the Analysis
-
-The analysis pipeline can be executed via command line:
-
-```bash
-python -m analysis.run_analysis
-
-# Analyse a specific file
-python -m analysis.run_analysis --file path/to/session.csv
-
-# Analyse all logs in a directory
-python -m analysis.run_analysis --dir logs/
-
-# Save plots to disk
-python -m analysis.run_analysis --save-plots
-
-# Custom output directory
-python -m analysis.run_analysis --output-dir my/plots/
-```
+Alternatively, simply click on the object you want to grasp in the robot view.
 
 ## Project Structure
 
@@ -150,40 +105,17 @@ The project is organised into modular components:
 └── logs                            # Logs (generated at runtime)
 ```
 
-## Technologies
-
-- Python
-- Streamlit
-- MediaPipe (gesture recognition)
-- OpenAI Whisper (speech recognition)
-- pandas (data analysis)
-- matplotlib (visualisation)
-
-## Code Quality & Tooling
-
-| Tool                                    | Purpose       | Config           |
-|-----------------------------------------|---------------|------------------|
-| [Black](https://black.readthedocs.io)   | Formatter     | `pyproject.toml` |
-| [isort](https://pycqa.github.io/isort/) | Import sorter | `pyproject.toml` |
-| [pylint](https://pylint.readthedocs.io) | Linter        | `.pylintrc`      |
-
-### Running the tools
-
-```bash
-# Format
-black .
-isort .
-
-# Lint
-pylint app.py config.py models.py voice/ gesture/ fusion/ trial_logger/ experiments/ analysis/ ui/
-
-# Pre-commit (one-time setup)
-pip install pre-commit
-pre-commit install
-```
-
 ## Notes
 
-- The `logs/` directory is created automatically at runtime and is not included in the repository.
 - Webcam access is required for gesture input.
-- Microphone access is required for voice input.
+
+## Authors
+
+- Adrian Vecina Tercero 
+- Ruben Odamo
+
+## Aknowledgements
+
+- Hello Robot for the visual servoing scripts
+
+AI was used in parts of this project.

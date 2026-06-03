@@ -2,6 +2,8 @@
 .snap
 .assert
 .sh
+torch2trt/
+tmp_cusparbelt/
 
 # Python
 __pycache__/
