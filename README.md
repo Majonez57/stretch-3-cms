@@ -45,7 +45,7 @@ python3 -m vision.run_demo
 You should see a GUI with two images. To use gesture selection, face the webcam, and point with your finger. You will see a cursor appear on the robot view. Once you are happy with the selected object, lift your middle finger to select.
 
 Alternatively, simply click on the object you want to grasp in the robot view.
-
+<!--
 ## Project Structure
 
 The project is organised into modular components:
@@ -104,6 +104,7 @@ The project is organised into modular components:
 │
 └── logs                            # Logs (generated at runtime)
 ```
+-->
 
 ## Notes
 
