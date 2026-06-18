@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import sys
 import os
+import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -257,6 +258,7 @@ def main() -> None:
 
             # --- SAM tracking ---
             fingertip_neg_pts = list(aruco_markers.values()) if aruco_markers else None
+            t0 = time.time()
             sam_result = sam_tracker.process(
                 robot_frame,
                 depth_frame,
@@ -264,6 +266,8 @@ def main() -> None:
                 depth_scale if depth_scale is not None else 0.001,
                 neg_points=fingertip_neg_pts,
             )
+            t1 = time.time()
+            #print(f"{(t1-t0)*1000}ms")
 
             if sam_result is not None:
                 robot_display = _draw_sam_overlay(robot_display, sam_result["mask"])

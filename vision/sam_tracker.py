@@ -142,6 +142,7 @@ class SamTracker:
                     "width_m": width_m,
                     "estimated_z_m": estimated_z_m,
                 }
+                print("dih")
 
         if self._last_depth_result is not None:
             result.update(self._last_depth_result)
