@@ -273,7 +273,6 @@ def main() -> None:
 
             if command_fired:
                 send_command(last_target, sam_result=sam_result)
-
             # --- Display ---
             right = _resize_to_height(robot_display, DISPLAY_HEIGHT)
             _click_state["robot_scale"] = DISPLAY_HEIGHT / rh

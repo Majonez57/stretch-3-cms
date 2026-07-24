@@ -1,9 +1,13 @@
-streamlit>=1.33
-streamlit-webrtc
 mediapipe
-openai-whisper
 opencv-python
+torch==2.10.0+cu126
+torchvision==0.23.0+cu126
 pandas
 matplotlib
 scipy
 pytest
+norfair
+ultralytics
+numpy<2
+urchin
+pyzmq

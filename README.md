@@ -12,13 +12,13 @@ The demo uses:
 
 ## Installation
 
-!TODO
+- Install the `hand_landmarker.task` file from [mediapipe](https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker) and place it in the`/gestures/` folder
 
 ## Running the Demo
 
-**Physical checks and requirements**
+**Physical checks and other requirements**
 
-!TODO
+- Make sure that the IP of your remote machine is on line 2 of `stretch_visual_servoing/yolo_networking.py` (on the robot)
 
 **Running the demo:**
 - To begin publishing images, on the robot terminal A:
@@ -38,7 +38,7 @@ python3 visual_servoing_demo.py -y -r
 
 - To run the demo, on the Jetson (or another GPU device):
 ```bash
-cd Documents/stretch_visual_servoing/
+cd Documents/stretch-3-cms/
 python3 -m vision.run_demo
 ```
 
